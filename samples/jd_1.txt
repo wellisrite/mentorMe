@@ -1,0 +1,3 @@
+Senior Data Analyst
+We require strong SQL and Python. Experience with dashboards is essential.
+Nice to have: AWS Redshift, dbt, CI/CD.

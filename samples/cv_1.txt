@@ -1,0 +1,3 @@
+Jane Doe
+Data Analyst with 4 years experience.
+Skills: Python, SQL, Docker, Tableau.

@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.env
+.env
+.venv
+venv/
+ENV/
+env/
+.Python
+
+# VSCode
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test/coverage
+htmlcov/
+.coverage
+.cache
+.pytest_cache/
+.tox/
+.nox/
+*.cover
+*.log
+
+# Docker
+*.pid
+*.pid.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Migrations
+*.sqlite3
+*.db
+
+# Secrets/SSL
+*.pem
+*.key
+*.crt
+ssl/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Notebooks
+*.ipynb
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# MyPy
+.mypy_cache/
+
+# Reports
+coverage.xml
+
+# Ignore local backups
+backup_*.sql
+
+# Ignore compiled files in app/services
+app/services/*.pyc
+
+# Ignore sample data outputs
+samples/*.out
+
+# Ignore docker-compose override files
+docker-compose.override.yml
