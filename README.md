@@ -1,4 +1,4 @@
-# Career Mirror - MentorME 2.0 Backend
+# Career Mirror - MentorME 1.0 Backend
 
 A production-ready microservice that intelligently analyzes CV-to-Job Description matching with explainable AI scoring and actionable improvement recommendations.
 
