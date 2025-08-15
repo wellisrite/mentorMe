@@ -52,36 +52,44 @@ async def init_cache():
             else:
                 logger.error(f"Failed to initialize Redis cache after {max_retries} attempts: {e}")
 
-def cache_key_builder(func, *args, **kwargs):
-    """Build cache key from function name and arguments."""
+def cache_key_builder(
+    func,
+    *args,
+    **kwargs
+):
+    """Build cache key from function name and arguments"""
     try:
-        safe_parts = []
-
-        # Process positional args (skip non-serializable objects like repo/db)
-        for i, v in enumerate(args):
-            try:
-                json.dumps(v)
-                safe_parts.append(f"arg{i}:{json.dumps(v, sort_keys=True)}")
-            except (TypeError, ValueError):
-                continue  # Skip un-serializable
-
-        # Process keyword args (skip db/repo)
+        # Remove non-serializable objects
+        safe_kwargs = {}
         for k, v in kwargs.items():
-            if k in {"db", "repo"}:  # skip connection objects
+            if k == 'db':  # Skip database connection
                 continue
             try:
-                json.dumps(v)
-                safe_parts.append(f"{k}:{json.dumps(v, sort_keys=True)}")
+                json.dumps(v)  # Test if serializable
+                safe_kwargs[k] = v
             except (TypeError, ValueError):
                 continue
-
+        
+        # Create base key
         prefix = f"{func.__module__}:{func.__name__}"
-        key_string = f"{prefix}:{':'.join(sorted(safe_parts))}"
-
+        
+        # Create key parts only from serializable values
+        key_parts = []
+        for k in sorted(safe_kwargs.keys()):
+            try:
+                key_parts.append(f"{k}:{json.dumps(safe_kwargs[k], sort_keys=True)}")
+            except (TypeError, ValueError):
+                continue
+        
+        # Build final key
+        key_string = f"{prefix}:{':'.join(key_parts)}"
+        
+        # Hash if too long
         if len(key_string) > 100:
             return f"{prefix}:{hashlib.sha256(key_string.encode()).hexdigest()}"
+        
         return key_string
-
     except Exception as e:
         logger.error(f"Error building cache key: {e}")
+        # Fallback to function name only
         return f"{func.__module__}:{func.__name__}"

@@ -16,10 +16,6 @@ async def get_repository(db=Depends(get_database)) -> MatchRepository:
     """Dependency to get match repository."""
     return MatchRepository(db)
 
-@cache(expire=120, key_builder=cache_key_builder)
-async def get_existing_match_cached(profile_id: int, job_id: int, repo: MatchRepository):
-    return await repo.get_existing_match(profile_id, job_id)
-
 @router.post("/", response_model=MatchResponse)
 async def create_match(
     match_request: MatchRequest, 
@@ -30,10 +26,9 @@ async def create_match(
         logger.info(f"Creating match for profile {match_request.profile_id} and job {match_request.job_id}")
         
         # Check existing match
-        existing_match = await get_existing_match_cached(
+        existing_match = await repo.get_existing_match(
             match_request.profile_id, 
             match_request.job_id,
-            repo
         )
         
         if existing_match:

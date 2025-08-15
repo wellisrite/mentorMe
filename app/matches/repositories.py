@@ -2,8 +2,7 @@ from typing import Dict, Optional
 import json
 import logging
 from databases import Database
-from fastapi_cache.decorator import cache
-from app.services.redis import cache_key_builder, FastAPICache
+
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +10,6 @@ class MatchRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    @cache(expire=120, key_builder=cache_key_builder, namespace="matches")
     async def get_existing_match(self, profile_id: int, job_id: int) -> Optional[Dict]:
         """Get existing match if it exists (cached for 2 minutes)."""
         logger.debug(f"Fetching existing match for profile {profile_id}, job {job_id} from DB")
@@ -66,19 +64,5 @@ class MatchRepository:
                 "suggestions": json.dumps([suggestion.dict() for suggestion in suggestions])
             }
         )
-
-        # Invalidate cached report for this profile
-        try:
-            await FastAPICache.clear(namespace=f"report:{profile_id}")
-            logger.debug(f"Cleared cached report for profile {profile_id}")
-        except Exception as e:
-            logger.warning(f"Failed to clear report cache for profile {profile_id}: {e}")
-
-        # Also clear cached existing match for this profile-job pair
-        try:
-            await FastAPICache.clear(namespace="matches")
-            logger.debug(f"Cleared match cache after creating match for profile {profile_id}, job {job_id}")
-        except Exception as e:
-            logger.warning(f"Failed to clear match cache: {e}")
 
         return result
