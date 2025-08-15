@@ -46,6 +46,7 @@ def patch_fastapi_cache(monkeypatch):
     monkeypatch.setattr("fastapi_cache.FastAPICache.init", lambda *a, **kw: None)
     monkeypatch.setattr("fastapi_cache.FastAPICache.get_coder", lambda *a, **kw: DummyCoder())
     monkeypatch.setattr("fastapi_cache.FastAPICache.get_backend", lambda *a, **kw: DummyCacheBackend())
+    monkeypatch.setattr("fastapi_cache.FastAPICache.get_key_builder", lambda: lambda *a, **kw: "dummy-key")
 
 @pytest.fixture
 def mock_database():
