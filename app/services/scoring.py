@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import statistics
 from functools import lru_cache
@@ -911,11 +911,11 @@ async def get_profile_aggregate_report_enhanced(profile_id: int) -> Dict[str, An
         ]
         
         # Trending skills analysis (skills appearing in recent jobs)
-        recent_matches = [m for m in matches if (datetime.utcnow() - m["created_at"]).days <= 30]
+        recent_matches = [m for m in matches if (datetime.now(timezone.utc) - m["created_at"]).days <= 30]
         if recent_matches:
             recent_skill_mentions = Counter()
             for match in recent_matches:
-                job_skills = extract_skills_from_text(match["description"])
+                job_skills = extract_skills_from_text(match["job_description"])
                 for skill in job_skills:
                     recent_skill_mentions[skill] += 1
             
