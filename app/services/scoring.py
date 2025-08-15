@@ -911,7 +911,11 @@ async def get_profile_aggregate_report_enhanced(profile_id: int) -> Dict[str, An
         ]
         
         # Trending skills analysis (skills appearing in recent jobs)
-        recent_matches = [m for m in matches if (datetime.now(timezone.utc) - m["created_at"]).days <= 30]
+        recent_matches = [
+            m for m in matches 
+            if (datetime.now(timezone.utc) - m["created_at"].replace(tzinfo=timezone.utc)).days <= 30
+        ]
+        
         if recent_matches:
             recent_skill_mentions = Counter()
             for match in recent_matches:

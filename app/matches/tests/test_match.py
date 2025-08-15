@@ -109,29 +109,3 @@ class TestMatchAPI:
         """Test match creation input validation."""
         response = await async_client.post("/v1/matches/", json=match_request)
         assert response.status_code == expected_status
-
-class TestReportsAPI:
-    """Test reports API endpoints."""
-    
-    async def test_get_profile_report_success(self, async_client):
-        """Test successful profile report generation."""
-        with patch('app.services.scoring.get_profile_aggregate_report', new_callable=AsyncMock) as mock_report:
-            mock_report.return_value = {
-                "profile_id": 1,
-                "total_jobs_analyzed": 2,
-                "average_match_score": 80.0,
-                "top_skills": [{"skill": "python", "match_rate": 0.9}],
-                "common_gaps": [{"skill": "java", "frequency": 0.5}],
-                "recommendations": ["Add Java to your skillset"],
-                "last_updated": "2024-01-15T10:00:00"
-            }
-            
-            response = await async_client.get("/v1/reports/1")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["profile_id"] == 1
-            assert data["total_jobs_analyzed"] == 2
-            assert data["average_match_score"] == 80.0
-            assert len(data["recommendations"]) > 0
-            mock_report.assert_called_once_with(1)

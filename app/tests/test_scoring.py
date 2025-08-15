@@ -522,7 +522,7 @@ class TestBatchProcessingAndReporting:
                 "created_at": datetime.utcnow() - timedelta(days=5),
                 "title": "Backend Developer",
                 "company": "TechCorp",
-                "description": "Python Django developer needed"
+                "job_description": "Python Django developer needed"
             },
             {
                 "match_score": 70.0,
@@ -530,7 +530,7 @@ class TestBatchProcessingAndReporting:
                 "created_at": datetime.utcnow() - timedelta(days=10),
                 "title": "Full Stack Developer",
                 "company": "WebCorp",
-                "description": "React developer needed"
+                "job_description": "React developer needed"
             }
         ]
         
