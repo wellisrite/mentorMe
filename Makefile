@@ -84,16 +84,16 @@ api-test: ## Test API endpoints manually
 # Sample Data
 load-samples: ## Load sample CV and job data
 	@echo "Loading sample profile..."
-	curl -X POST "http://localhost:8000/profiles/" \
+	curl -X POST "http://localhost:8000/v1/profiles/" \
 	  -H "Content-Type: application/json" \
 	  -d @samples/cv_sample.json | jq '.'
 	@echo "\nLoading sample job..."
-	curl -X POST "http://localhost:8000/jobs/" \
+	curl -X POST "http://localhost:8000/v1/jobs/" \
 	  -H "Content-Type: application/json" \
 	  -d @samples/job_sample.json | jq '.'
 
 create-match: ## Create a sample match (requires profile_id and job_id)
-	curl -X POST "http://localhost:8000/matches/" \
+	curl -X POST "http://localhost:8000/v1/matches/" \
 	  -H "Content-Type: application/json" \
 	  -d '{"profile_id": 1, "job_id": 1}' | jq '.'
 
@@ -144,7 +144,7 @@ demo: ## Quick demo setup with sample data
 	@echo ""
 	@echo "🎉 Demo ready! Check out:"
 	@echo "   API Docs: http://localhost:8000/docs"
-	@echo "   Profile Report: http://localhost:8000/reports/1"
+	@echo "   Profile Report: http://localhost:8000/v1/reports/1"
 
 # Backup and Restore
 backup: ## Backup database
