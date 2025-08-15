@@ -200,6 +200,7 @@ make clean          # Clean up containers
 - **Semantic Embeddings**: Sentence-transformers for deeper skill understanding
 - **LinkedIN Profile Scrapper**: tools to fetch user profile by url
 - **Redis Caching**: Sub-50ms response times for repeated matches 
+- **Cache Invalidation on Updates**: Updating a profile or job will automatically remove stale matches from the DB and Redis caches to ensure fresh calculation
 - **ML Feedback Loop**: Learning from user interactions to improve matching
 - **Batch Processing**: Handle 1000+ CV analysis jobs
 - **Advanced Analytics**: Skill trend analysis and market insights
