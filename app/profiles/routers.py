@@ -87,7 +87,7 @@ async def create_profile(profile_data: ProfileCreate, repo: ProfileRepository = 
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/", response_model=List[ProfileResponse])
-@cache(expire=300, key_builder=cache_key_builder)
+# @cache(expire=300, key_builder=cache_key_builder)
 async def list_profiles(repo: ProfileRepository = Depends(get_repository)):
     """List all profiles."""
     try:
@@ -107,7 +107,7 @@ async def list_profiles(repo: ProfileRepository = Depends(get_repository)):
         raise HTTPException(status_code=500, detail="Failed to list profiles")
 
 @router.get("/{profile_id}", response_model=ProfileResponse)
-@cache(expire=300, key_builder=cache_key_builder)
+# @cache(expire=300, key_builder=cache_key_builder)
 async def get_profile(profile_id: int, repo: ProfileRepository = Depends(get_repository)):
     """Get a specific profile by ID."""
     try:

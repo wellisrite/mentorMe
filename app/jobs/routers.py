@@ -55,7 +55,7 @@ async def create_job(job_data: JobCreate, repo: JobRepository = Depends(get_repo
         raise HTTPException(status_code=500, detail="Failed to create job")
 
 @router.get("/", response_model=List[JobResponse])
-@cache(expire=300, key_builder=cache_key_builder)
+# @cache(expire=300, key_builder=cache_key_builder)
 async def list_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
@@ -81,7 +81,7 @@ async def list_jobs(
         raise HTTPException(status_code=500, detail="Failed to list jobs")
 
 @router.get("/{job_id}", response_model=JobResponse)
-@cache(expire=300, key_builder=cache_key_builder)  # Cache for 5 minutes
+# @cache(expire=300, key_builder=cache_key_builder)  # Cache for 5 minutes
 async def get_job(job_id: int, repo: JobRepository = Depends(get_repository)):
     """Get a specific job by ID with caching."""
     try:

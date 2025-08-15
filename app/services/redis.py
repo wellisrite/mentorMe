@@ -52,44 +52,41 @@ async def init_cache():
             else:
                 logger.error(f"Failed to initialize Redis cache after {max_retries} attempts: {e}")
 
-def cache_key_builder(
-    func,
-    *args,
-    **kwargs
-):
+def cache_key_builder(func, *args, **kwargs):
     """Build cache key from function name and arguments"""
     try:
-        # Remove non-serializable objects
+        # Include positional args (like job_id)
+        safe_args = []
+        for v in args:
+            try:
+                json.dumps(v)
+                safe_args.append(v)
+            except (TypeError, ValueError):
+                continue
+
+        # Remove non-serializable kwargs
         safe_kwargs = {}
         for k, v in kwargs.items():
             if k == 'db':  # Skip database connection
                 continue
             try:
-                json.dumps(v)  # Test if serializable
+                json.dumps(v)
                 safe_kwargs[k] = v
             except (TypeError, ValueError):
                 continue
-        
-        # Create base key
+
         prefix = f"{func.__module__}:{func.__name__}"
-        
-        # Create key parts only from serializable values
-        key_parts = []
+
+        key_parts = [str(a) for a in safe_args]
         for k in sorted(safe_kwargs.keys()):
-            try:
-                key_parts.append(f"{k}:{json.dumps(safe_kwargs[k], sort_keys=True)}")
-            except (TypeError, ValueError):
-                continue
-        
-        # Build final key
+            key_parts.append(f"{k}:{json.dumps(safe_kwargs[k], sort_keys=True)}")
+
         key_string = f"{prefix}:{':'.join(key_parts)}"
-        
-        # Hash if too long
+
         if len(key_string) > 100:
             return f"{prefix}:{hashlib.sha256(key_string.encode()).hexdigest()}"
-        
+
         return key_string
     except Exception as e:
         logger.error(f"Error building cache key: {e}")
-        # Fallback to function name only
         return f"{func.__module__}:{func.__name__}"
