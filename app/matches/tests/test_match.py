@@ -26,7 +26,7 @@ class TestMatchAPI:
                 "job_id": 1
             }
             
-            response = await async_client.post("/matches/", json=match_request)
+            response = await async_client.post("/v1/matches/", json=match_request)
             
             # Verify response
             assert response.status_code == 200
@@ -53,7 +53,7 @@ class TestMatchAPI:
                 "job_id": 1
             }
             
-            response = await async_client.post("/matches/", json=match_request)
+            response = await async_client.post("/v1/matches/", json=match_request)
             
             assert response.status_code == 200
             data = response.json()
@@ -73,7 +73,7 @@ class TestMatchAPI:
                 "job_id": 1
             }
             
-            response = await async_client.post("/matches/", json=match_request)
+            response = await async_client.post("/v1/matches/", json=match_request)
             
             assert response.status_code == 404
             assert "Profile not found" in response.json()["detail"]
@@ -93,7 +93,7 @@ class TestMatchAPI:
                 "job_id": 999
             }
             
-            response = await async_client.post("/matches/", json=match_request)
+            response = await async_client.post("/v1/matches/", json=match_request)
             
             assert response.status_code == 404
             assert "Job not found" in response.json()["detail"]
@@ -107,7 +107,7 @@ class TestMatchAPI:
     ])
     async def test_create_match_validation(self, async_client, match_request, expected_status):
         """Test match creation input validation."""
-        response = await async_client.post("/matches/", json=match_request)
+        response = await async_client.post("/v1/matches/", json=match_request)
         assert response.status_code == expected_status
 
 class TestReportsAPI:
@@ -126,7 +126,7 @@ class TestReportsAPI:
                 "last_updated": "2024-01-15T10:00:00"
             }
             
-            response = await async_client.get("/reports/1")
+            response = await async_client.get("/v1/reports/1")
             
             assert response.status_code == 200
             data = response.json()

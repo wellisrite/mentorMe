@@ -14,7 +14,7 @@ make load-samples
 make create-match
 
 # View results
-curl http://localhost:8000/reports/1 | jq
+curl http://localhost:8000/v1/reports/1 | jq
 ```
 
 **Live API Documentation:** http://localhost:8000/docs
@@ -78,7 +78,7 @@ final_score = (must_have_match * 0.7) + (nice_to_have_match * 0.3) + tfidf_bonus
 <summary><strong>Create Profile</strong></summary>
 
 ```bash
-curl -X POST "http://localhost:8000/profiles" \
+curl -X POST "http://localhost:8000/v1/profiles" \
   -H "Content-Type: application/json" \
   -d '{
     "cv_text": "Senior Python Developer with 5+ years Django, PostgreSQL, AWS experience...",
@@ -100,7 +100,7 @@ Response:
 <summary><strong>Generate Match Analysis</strong></summary>
 
 ```bash
-curl -X POST "http://localhost:8000/matches" \
+curl -X POST "http://localhost:8000/v1/matches" \
   -H "Content-Type: application/json" \
   -d '{"profile_id": 1, "job_id": 1}'
 ```

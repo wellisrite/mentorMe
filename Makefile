@@ -93,7 +93,7 @@ load-samples: ## Load sample CV and job data
 	  -d @samples/job_sample.json | jq '.'
 
 create-match: ## Create a sample match (requires profile_id and job_id)
-	curl -X POST "http://localhost:8000/match/" \
+	curl -X POST "http://localhost:8000/matches/" \
 	  -H "Content-Type: application/json" \
 	  -d '{"profile_id": 1, "job_id": 1}' | jq '.'
 

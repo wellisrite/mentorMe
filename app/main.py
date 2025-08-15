@@ -54,8 +54,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(main_router)
+app.include_router(main_router, prefix="/v1")
 app.include_router(health_router, prefix="/healthz", tags=["Health"])
-app.include_router(profiles_router, prefix="/profiles", tags=["Profiles"])
-app.include_router(jobs_router, prefix="/jobs", tags=["Jobs"])
-app.include_router(matches_router, prefix="/matches", tags=["Matches"])
+app.include_router(profiles_router, prefix="/v1/profiles", tags=["Profiles"])
+app.include_router(jobs_router, prefix="/v1/jobs", tags=["Jobs"])
+app.include_router(matches_router, prefix="/v1/matches", tags=["Matches"])

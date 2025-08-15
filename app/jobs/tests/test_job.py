@@ -21,7 +21,7 @@ class TestJobsAPI:
                 "company": "TechCorp Inc."
             }
             
-            response = await async_client.post("/jobs/", json=job_data)
+            response = await async_client.post("/v1/jobs/", json=job_data)
             
             assert response.status_code == 200
             data = response.json()
@@ -52,7 +52,7 @@ class TestJobsAPI:
         ]
         
         for payload, expected_status in test_cases:
-            response = await async_client.post("/jobs/", json=payload)
+            response = await async_client.post("/v1/jobs/", json=payload)
             assert response.status_code == expected_status
 
         job_data = {
@@ -61,7 +61,7 @@ class TestJobsAPI:
             "company": "TechCorp"
         }
         with patch('app.jobs.repositories.JobRepository.create_job', new_callable=AsyncMock):
-            response = await async_client.post("/jobs/", json=job_data)
+            response = await async_client.post("/v1/jobs/", json=job_data)
             assert response.status_code == 422
     
     async def test_list_jobs_pagination(self, async_client, mock_job_data):
@@ -71,13 +71,13 @@ class TestJobsAPI:
             mock_list.return_value = [mock_job_data] * 10
             
             # Test first page
-            response = await async_client.get("/jobs/?page=1&page_size=10")
+            response = await async_client.get("/v1/jobs/?page=1&page_size=10")
             assert response.status_code == 200
             data = response.json()
             assert len(data) == 10
             
             # Test with different page size
-            response = await async_client.get("/jobs/?page=1&page_size=5")
+            response = await async_client.get("/v1/jobs/?page=1&page_size=5")
             assert response.status_code == 200
             assert len(response.json()) == 10  # Still returns mock data
             
@@ -89,7 +89,7 @@ class TestJobsAPI:
         with patch('app.jobs.repositories.JobRepository.get_job_by_id', new_callable=AsyncMock) as mock_get:
             # Test successful retrieval
             mock_get.return_value = mock_job_data
-            response = await async_client.get(f"/jobs/{mock_job_data['id']}")
+            response = await async_client.get(f"/v1/jobs/{mock_job_data['id']}")
             assert response.status_code == 200
             data = response.json()
             assert data["id"] == mock_job_data["id"]
@@ -99,7 +99,7 @@ class TestJobsAPI:
             # Test job not found
             mock_get.reset_mock()
             mock_get.return_value = None
-            response = await async_client.get("/jobs/999")
+            response = await async_client.get("/v1/jobs/999")
             assert response.status_code == 404
             assert "not found" in response.json()["detail"].lower()
     
@@ -118,7 +118,7 @@ class TestJobsAPI:
         }
         job_data[field] = invalid_value
         
-        response = await async_client.post("/jobs/", json=job_data)
+        response = await async_client.post("/v1/jobs/", json=job_data)
         assert response.status_code == 422
     
     async def test_cache_invalidation(self, async_client, mock_job_data):
@@ -128,7 +128,7 @@ class TestJobsAPI:
             
             mock_create.return_value = mock_job_data
             
-            response = await async_client.post("/jobs/", json={
+            response = await async_client.post("/v1/jobs/", json={
                 "job_description": "This is a valid job description that is definitely long enough to pass validation. It includes required skills and nice to have skills.",
                 "title": "Developer",
                 "company": "TechCorp"

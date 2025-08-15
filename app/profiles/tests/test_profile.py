@@ -19,7 +19,7 @@ class TestProfilesAPI:
                 "linkedin_url": "https://linkedin.com/in/johndoe"
             }
             
-            response = await async_client.post("/profiles/", json=profile_data)
+            response = await async_client.post("/v1/profiles/", json=profile_data)
             
             assert response.status_code == 200
             data = response.json()
@@ -42,7 +42,7 @@ class TestProfilesAPI:
                 "linkedin_url": None
             }
             
-            response = await async_client.post("/profiles/", json=profile_data)
+            response = await async_client.post("/v1/profiles/", json=profile_data)
             
             assert response.status_code == 200
             data = response.json()
@@ -63,7 +63,7 @@ class TestProfilesAPI:
                 "linkedin_url": "https://linkedin.com/in/johndoe"
             }
             
-            response = await async_client.post("/profiles/", json=profile_data)
+            response = await async_client.post("/v1/profiles/", json=profile_data)
             assert response.status_code == 422
 
     @pytest.mark.parametrize("test_input,expected_status", [
@@ -77,7 +77,7 @@ class TestProfilesAPI:
     ])
     async def test_create_profile_validation_error(self, async_client, test_input, expected_status):
         """Test profile creation validation errors."""
-        response = await async_client.post("/profiles/", json=test_input)
+        response = await async_client.post("/v1/profiles/", json=test_input)
         assert response.status_code == expected_status
     
     async def test_list_profiles_success(self, async_client, mock_profile_data):
@@ -85,7 +85,7 @@ class TestProfilesAPI:
         with patch('app.profiles.repositories.ProfileRepository.list_profiles', new_callable=AsyncMock) as mock_list:
             mock_list.return_value = [mock_profile_data] * 10
             
-            response = await async_client.get("/profiles/")
+            response = await async_client.get("/v1/profiles/")
             
             assert response.status_code == 200
             data = response.json()
@@ -98,7 +98,7 @@ class TestProfilesAPI:
         with patch('app.profiles.repositories.ProfileRepository.get_profile_by_id', new_callable=AsyncMock) as mock_get:
             mock_get.return_value = mock_profile_data
             
-            response = await async_client.get(f"/profiles/{mock_profile_data['id']}")
+            response = await async_client.get(f"/v1/profiles/{mock_profile_data['id']}")
             
             assert response.status_code == 200
             data = response.json()
@@ -110,7 +110,7 @@ class TestProfilesAPI:
         with patch('app.profiles.repositories.ProfileRepository.get_profile_by_id', new_callable=AsyncMock) as mock_get:
             mock_get.return_value = None
             
-            response = await async_client.get("/profiles/999")
+            response = await async_client.get("/v1/profiles/999")
             
             assert response.status_code == 404
             assert "not found" in response.json()["detail"].lower()
@@ -123,7 +123,7 @@ class TestProfilesAPI:
             
             mock_create.return_value = mock_profile_data
             
-            response = await async_client.post("/profiles/", json={
+            response = await async_client.post("/v1/profiles/", json={
                 "cv_text": "This is a valid CV text that is definitely long enough to pass validation. It contains more than 50 characters."
             })
             
