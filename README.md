@@ -100,7 +100,7 @@ Response:
 <summary><strong>Generate Match Analysis</strong></summary>
 
 ```bash
-curl -X POST "http://localhost:8000/match" \
+curl -X POST "http://localhost:8000/matches" \
   -H "Content-Type: application/json" \
   -d '{"profile_id": 1, "job_id": 1}'
 ```
