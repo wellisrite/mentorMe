@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 from databases import Database
 import logging
 import json
+from app.services.cache import cache_service, build_cache_key, CacheConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,3 +44,32 @@ class ProfileRepository:
             WHERE id = :profile_id
         """
         return await self.db.fetch_one(query=query, values={"profile_id": profile_id})
+    
+    async def get_profile_by_id(self, profile_id: int) -> Optional[Dict]:
+        """Get profile by ID with caching"""
+        # Try cache first
+        cache_key = build_cache_key("profile", profile_id)
+        cached_result = await cache_service.get(cache_key)
+        
+        if cached_result:
+            logger.debug(f"Cache hit for profile {profile_id}")
+            return cached_result
+        
+        # Query database
+        query = """
+            SELECT id, cv_text, linkedin_url, skills, created_at 
+            FROM profiles 
+            WHERE id = :profile_id
+        """        
+        result = await self.db.fetch_one(
+            query=query,
+            values={"profile_id": profile_id}
+        )
+        
+        # Cache result if found
+        if result:
+            result_dict = dict(result)
+            await cache_service.set(cache_key, result_dict, CacheConfig.PROFILE_TTL)
+            logger.debug(f"Cached profile {profile_id}")
+        
+        return dict(result) if result else None
