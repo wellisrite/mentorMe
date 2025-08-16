@@ -210,9 +210,6 @@ def extract_skills_from_text(text: str) -> List[str]:
     
     return list(unique_skills.keys())
 
-import re
-from typing import List, Tuple
-
 def extract_job_requirements_enhanced(job_description: str) -> Tuple[List[str], List[str], List[str]]:
     """Enhanced job requirement extraction with bonus skills category."""
     text_lower = job_description.lower()
