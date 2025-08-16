@@ -48,13 +48,14 @@ async def create_profile(profile_data: ProfileCreate, repo: ProfileRepository = 
         
         # Extract skills from CV text
         skills = extract_skills_from_text(profile_data.cv_text)
+        skills_json = json.dumps(skills)  
         logger.info(f"Extracted {len(skills)} skills from CV")
         
         try:
             result = await repo.create_profile(
                 cv_text=profile_data.cv_text,
                 linkedin_url=profile_data.linkedin_url,
-                skills=skills
+                skills=skills_json
             )
         except Exception as db_error:
             logger.error(f"Database error while creating profile: {db_error}")
