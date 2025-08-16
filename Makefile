@@ -47,6 +47,9 @@ test-integration: ## Run integration tests only
 test-module: ## Run tests for specific module (Usage: make test-module MODULE=jobs)
 	docker-compose exec app python -m pytest "app/$(MODULE)/tests" -v
 
+test-services: ## Run tests for report and scoring 
+	docker-compose exec app python -m pytest "app/tests" -v
+
 test-coverage: ## Run tests with coverage report
 	docker-compose exec app python -m pytest \
 		--cov=app \
