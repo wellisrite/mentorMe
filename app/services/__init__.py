@@ -14,7 +14,7 @@ __all__ = [
     "build_cache_key", 
     "CacheConfig", 
     "init_cache", 
-    "cleanup_cache"
+    "cleanup_cache",
     # Scoring and matching
     'extract_skills_from_text',
     'extract_job_requirements',

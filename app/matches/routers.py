@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi_cache.decorator import cache
-from app.services.redis import cache_key_builder
 from app.matches.repositories import MatchRepository
+from app.profiles.repositories import ProfileRepository
+from app.jobs.repositories import JobRepository
 import logging
 import json
 
@@ -12,21 +12,31 @@ from app.services.scoring import calculate_match_score
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-async def get_repository(db=Depends(get_database)) -> MatchRepository:
+async def get_match_repository(db=Depends(get_database)) -> MatchRepository:
     """Dependency to get match repository."""
     return MatchRepository(db)
+
+async def get_profile_repository(db=Depends(get_database)) -> ProfileRepository:
+    """Dependency to get profile repository."""
+    return ProfileRepository(db)
+
+async def get_job_repository(db=Depends(get_database)) -> JobRepository:
+    """Dependency to get job repository."""
+    return JobRepository(db)
 
 @router.post("/", response_model=MatchResponse)
 async def create_match(
     match_request: MatchRequest, 
-    repo: MatchRepository = Depends(get_repository)
+    match_repo: MatchRepository = Depends(get_match_repository),
+    profile_repo: ProfileRepository = Depends(get_profile_repository),
+    job_repo: JobRepository = Depends(get_job_repository)
 ):
     """Generate match analysis between a profile and job."""
     try:
         logger.info(f"Creating match for profile {match_request.profile_id} and job {match_request.job_id}")
         
         # Check existing match
-        existing_match = await repo.get_existing_match(
+        existing_match = await match_repo.get_existing_match(
             match_request.profile_id, 
             match_request.job_id
         )
@@ -42,12 +52,13 @@ async def create_match(
                 created_at=existing_match["created_at"]
             )
         
-        # Get profile and job data
-        profile = await repo.get_profile(match_request.profile_id)
+        # Get profile data from profile repository
+        profile = await profile_repo.get_profile_by_id(match_request.profile_id)
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
         
-        job = await repo.get_job(match_request.job_id)
+        # Get job data from job repository
+        job = await job_repo.get_job_by_id(match_request.job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
@@ -61,7 +72,7 @@ async def create_match(
         )
         
         # Store match result
-        stored_match = await repo.create_match(
+        stored_match = await match_repo.create_match(
             profile_id=match_request.profile_id,
             job_id=match_request.job_id,
             match_score=match_result["match_score"],

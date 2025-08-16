@@ -1,18 +1,21 @@
-
-# app/services/cache.py
 """
 Centralized caching service for the Career Mirror API
 """
-
+import os
 import json
 import logging
 import hashlib
+import asyncio
 from typing import Any, Optional, Dict, List
 from functools import wraps
 import redis.asyncio as redis
 from datetime import datetime, timedelta
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
 
 logger = logging.getLogger(__name__)
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 
 class CacheConfig:
     """Cache configuration constants"""
@@ -26,36 +29,60 @@ class CacheConfig:
 class CacheService:
     """Centralized cache service using Redis"""
     
-    def __init__(self, redis_url: str = "redis://localhost:6379"):
+    def __init__(self, redis_url: str = REDIS_URL):
         self.redis_pool: Optional[redis.Redis] = None
+        self.fastapi_cache_backend = None
         self.redis_url = redis_url
         self._connected = False
     
     async def connect(self):
-        """Initialize Redis connection"""
-        try:
-            self.redis_pool = redis.from_url(
-                self.redis_url, 
-                decode_responses=True,
-                retry_on_timeout=True,
-                health_check_interval=30
-            )
-            
-            # Test connection
-            await self.redis_pool.ping()
-            self._connected = True
-            logger.info("Cache service connected successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to connect to cache: {e}")
-            self._connected = False
+        """Initialize Redis connection with retries"""
+        max_retries = 5
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                # Create Redis connection using redis.asyncio consistently
+                self.redis_pool = redis.from_url(
+                    self.redis_url,
+                    encoding="utf8",
+                    decode_responses=True,
+                    socket_timeout=5,
+                    socket_connect_timeout=5,
+                    retry_on_timeout=True,
+                    health_check_interval=30
+                )
+                
+                # Test connection with timeout
+                await asyncio.wait_for(self.redis_pool.ping(), timeout=5.0)
+                self._connected = True
+                
+                # Store the backend for FastAPI-Cache compatibility
+                self.fastapi_cache_backend = self.redis_pool
+                
+                logger.info("Cache service connected successfully")
+                return
+                
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Cache connection attempt {attempt + 1} failed: {e}")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error(f"Failed to connect to cache after {max_retries} attempts: {e}")
+                    self._connected = False
+                    # Don't raise exception - allow app to continue without cache
     
     async def disconnect(self):
         """Close Redis connection"""
         if self.redis_pool:
-            await self.redis_pool.aclose()
-            self._connected = False
-            logger.info("Cache service disconnected")
+            try:
+                await self.redis_pool.aclose()
+            except Exception as e:
+                logger.error(f"Error closing Redis connection: {e}")
+            finally:
+                self._connected = False
+                logger.info("Cache service disconnected")
     
     async def is_healthy(self) -> bool:
         """Check if cache is healthy"""
@@ -63,9 +90,10 @@ class CacheService:
             return False
         
         try:
-            await self.redis_pool.ping()
+            await asyncio.wait_for(self.redis_pool.ping(), timeout=2.0)
             return True
         except Exception:
+            self._connected = False  # Mark as disconnected on health check failure
             return False
     
     async def get(self, key: str) -> Optional[Any]:
@@ -113,14 +141,45 @@ class CacheService:
             return False
         
         try:
-            keys = await self.redis_pool.keys(pattern)
+            # Handle different pattern types
+            if pattern.startswith("mentorme_cache:"):
+                # Direct pattern for FastAPI-Cache compatibility
+                keys = await self.redis_pool.keys(pattern)
+            else:
+                # Standard pattern matching
+                keys = await self.redis_pool.keys(pattern)
+            
             if keys:
                 await self.redis_pool.delete(*keys)
-                logger.info(f"Deleted {len(keys)} keys matching pattern: {pattern}")
+                logger.debug(f"Deleted {len(keys)} keys matching pattern: {pattern}")
             return True
         except Exception as e:
             logger.error(f"Cache delete pattern error for {pattern}: {e}")
             return False
+    
+    async def clear_by_patterns(self, patterns: List[str]):
+        """Clear cache using multiple patterns efficiently"""
+        if not await self.is_healthy():
+            return False
+        
+        try:
+            all_keys = set()
+            for pattern in patterns:
+                keys = await self.redis_pool.keys(pattern)
+                all_keys.update(keys)
+            
+            if all_keys:
+                await self.redis_pool.delete(*list(all_keys))
+                logger.debug(f"Cleared {len(all_keys)} total keys from {len(patterns)} patterns")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing multiple patterns: {e}")
+            return False
+    
+    async def get_backend(self):
+        """Get Redis backend for FastAPI-Cache compatibility"""
+        return self.fastapi_cache_backend
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics"""
@@ -176,6 +235,45 @@ def build_cache_key(prefix: str, *args, **kwargs) -> str:
         logger.error(f"Error building cache key: {e}")
         return f"{prefix}:error"
 
+def cache_key_builder(func, *args, **kwargs):
+    """FastAPI-Cache compatible key builder"""
+    try:
+        # Include positional args (like job_id)
+        safe_args = []
+        for v in args:
+            try:
+                json.dumps(v)
+                safe_args.append(v)
+            except (TypeError, ValueError):
+                continue
+
+        # Remove non-serializable kwargs
+        safe_kwargs = {}
+        for k, v in kwargs.items():
+            if k == 'db':  # Skip database connection
+                continue
+            try:
+                json.dumps(v)
+                safe_kwargs[k] = v
+            except (TypeError, ValueError):
+                continue
+
+        prefix = f"{func.__module__}:{func.__name__}"
+
+        key_parts = [str(a) for a in safe_args]
+        for k in sorted(safe_kwargs.keys()):
+            key_parts.append(f"{k}:{json.dumps(safe_kwargs[k], sort_keys=True)}")
+
+        key_string = f"{prefix}:{':'.join(key_parts)}"
+
+        if len(key_string) > 100:
+            return f"{prefix}:{hashlib.sha256(key_string.encode()).hexdigest()}"
+
+        return key_string
+    except Exception as e:
+        logger.error(f"Error building cache key: {e}")
+        return f"{func.__module__}:{func.__name__}"
+
 def cached(ttl: int = CacheConfig.DEFAULT_TTL, prefix: str = ""):
     """Caching decorator for async functions"""
     def decorator(func):
@@ -207,8 +305,29 @@ def cached(ttl: int = CacheConfig.DEFAULT_TTL, prefix: str = ""):
 
 # Initialize cache function for main.py
 async def init_cache():
-    """Initialize cache service"""
-    await cache_service.connect()
+    """Initialize cache service and FastAPI-Cache"""
+    try:
+        # Initialize our cache service first
+        await cache_service.connect()
+        
+        # Only initialize FastAPI-Cache if we have a successful connection
+        if cache_service._connected and cache_service.redis_pool:
+            try:
+                FastAPICache.init(
+                    RedisBackend(cache_service.redis_pool), 
+                    prefix="mentorme_cache:",
+                    key_builder=cache_key_builder
+                )
+                logger.info("FastAPI-Cache initialized successfully")
+            except Exception as e:
+                logger.warning(f"FastAPI-Cache initialization failed: {e}")
+                # Continue without FastAPI-Cache
+        else:
+            logger.warning("Cache service not connected, skipping FastAPI-Cache initialization")
+        
+    except Exception as e:
+        logger.error(f"Error initializing cache: {e}")
+        # Don't raise - allow app to start without cache
 
 # Cleanup function for main.py
 async def cleanup_cache():
