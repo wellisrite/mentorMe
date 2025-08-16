@@ -67,7 +67,7 @@ TECHNICAL_SKILLS = {
     # Data & AI
     'data_ai': {
         'tensorflow', 'pytorch', 'scikit-learn', 'pandas', 'numpy', 'matplotlib',
-        'seaborn', 'plotly', 'jupyter', 'apache-spark', 'hadoop', 'kafka',
+        'seaborn', 'plotly', 'jupyter', 'apache-spark', 'hadoop', 'kafka', 'rabbitmq',
         'airflow', 'dbt', 'looker', 'tableau', 'power-bi'
     },
     # Architecture & Protocols
@@ -137,70 +137,151 @@ EXPERIENCE_PATTERNS = {
 
 @lru_cache(maxsize=1000)
 def normalize_skill(skill: str) -> Tuple[str, float]:
-    """Normalize skill name with confidence score."""
-    skill_lower = skill.lower().strip()
+    """FIXED: Normalize skill name with confidence score."""
+    skill_lower = skill.lower().strip(' .,;()[]{}')
     
-    if skill_lower in SKILL_SYNONYMS:
-        normalized, confidence = SKILL_SYNONYMS[skill_lower]
-        return normalized, confidence
+    # Handle multi-word phrases first (longer matches take precedence)
+    sorted_synonyms = sorted(SKILL_SYNONYMS.items(), key=lambda x: len(x[0]), reverse=True)
     
-    return skill_lower, 1.0
+    for synonym, (canonical, confidence) in sorted_synonyms:
+        if synonym in skill_lower:
+            return canonical, confidence
+    
+    # Direct match in skills database
+    if skill_lower in ALL_SKILLS:
+        return skill_lower, 1.0
+    
+    return skill_lower, 0.8  # Lower confidence for unknown skills
 
+# FIXED: Update the legacy function to use proper extraction
 def extract_skills_with_context(text: str) -> List[Tuple[str, str, float]]:
-    """Extract skills with context and confidence scores."""
+    """FIXED: Extract skills with context and confidence scores."""
     text_lower = text.lower()
     found_skills = []
     
-    # Direct skill matching with context
-    for skill in ALL_SKILLS:
-        pattern = r'\b' + re.escape(skill) + r'\b'
-        matches = re.finditer(pattern, text_lower)
-        
-        for match in matches:
-            start, end = match.span()
-            # Get surrounding context (20 chars each side)
-            context_start = max(0, start - 20)
-            context_end = min(len(text), end + 20)
-            context = text[context_start:context_end].strip()
-            
-            # Calculate confidence based on context
-            confidence = 1.0
-            
-            # Boost confidence for experience indicators
-            for exp_pattern, boost in EXPERIENCE_PATTERNS.items():
-                if re.search(exp_pattern, context, re.IGNORECASE):
-                    confidence = min(2.0, confidence * boost)
-                    break
-            
-            found_skills.append((skill, context, confidence))
-    
-    # Pattern-based extraction for structured content
-    extraction_patterns = [
-        (r'(?:skills?|technologies?|tools?)\s*:?\s*([^.!?\n]+)', 1.2),
-        (r'(?:experience with|proficient in|skilled in|expert in|knowledge of)\s+([^,.;]+)', 1.3),
-        (r'•\s*([^•\n]+?)(?:\n|$)', 1.1),  # Bullet points
-        (r'-\s*([^-\n]+?)(?:\n|$)', 1.1),   # Dash points
-        (r'(\w+(?:\.\w+)*)\s*(?:\d+\+?\s*years?)', 1.5)  # Years of experience
+    # Step 1: Handle multi-word phrases first
+    multi_word_phrases = [
+        'restful apis', 'restful api', 'rest api', 'rest apis',
+        'tailwind css', 'continuous integration', 'continuous deployment'
     ]
     
-    for pattern, base_confidence in extraction_patterns:
-        matches = re.findall(pattern, text_lower, re.IGNORECASE)
-        for match in matches:
-            skills_text = match.strip(' .,;-')
-            potential_skills = re.split(r'[,;/&\s]+', skills_text)
+    for phrase in multi_word_phrases:
+        if phrase in text_lower:
+            normalized, confidence = normalize_skill(phrase)
+            if normalized in ALL_SKILLS:
+                # Find the position for context
+                start = text_lower.find(phrase)
+                context_start = max(0, start - 20)
+                context_end = min(len(text), start + len(phrase) + 20)
+                context = text[context_start:context_end].strip()
+                found_skills.append((normalized, context, confidence))
+    
+    # Step 2: Direct skill matching with context (avoid duplicates from multi-word)
+    already_found = {skill for skill, _, _ in found_skills}
+    
+    for skill in ALL_SKILLS:
+        if skill in already_found:
+            continue
             
-            for skill in potential_skills:
-                skill = skill.strip(' .,;()[]{}')
-                normalized_skill, norm_confidence = normalize_skill(skill)
+        # Use appropriate matching strategy
+        if '/' in skill or '-' in skill or '.' in skill:
+            # Exact match for special characters
+            if skill in text_lower:
+                start = text_lower.find(skill)
+                context_start = max(0, start - 20)
+                context_end = min(len(text), start + len(skill) + 20)
+                context = text[context_start:context_end].strip()
+                found_skills.append((skill, context, 1.0))
+        else:
+            # Word boundary matching
+            pattern = r'\b' + re.escape(skill) + r'\b'
+            matches = re.finditer(pattern, text_lower)
+            
+            for match in matches:
+                start, end = match.span()
+                context_start = max(0, start - 20)
+                context_end = min(len(text), end + 20)
+                context = text[context_start:context_end].strip()
                 
-                if normalized_skill in ALL_SKILLS:
-                    confidence = base_confidence * norm_confidence
-                    found_skills.append((normalized_skill, match, confidence))
+                # Calculate confidence based on context
+                confidence = 1.0
+                for exp_pattern, boost in EXPERIENCE_PATTERNS.items():
+                    if re.search(exp_pattern, context, re.IGNORECASE):
+                        confidence = min(2.0, confidence * boost)
+                        break
+                
+                found_skills.append((skill, context, confidence))
     
     return found_skills
 
+def extract_skills_from_bullet_point(bullet_text: str) -> List[Tuple[str, float]]:
+    """FIXED: Extract skills from a single bullet point with proper handling."""
+    bullet_lower = bullet_text.lower()
+    found_skills = []
+        
+    # Step 1: Handle multi-word skill variations first
+    multi_word_mappings = {
+        'restful apis': 'rest',
+        'restful api': 'rest', 
+        'rest api': 'rest',
+        'rest apis': 'rest',
+        'tailwind css': 'tailwind',
+        'ci/cd': 'ci/cd',
+        'continuous integration': 'ci/cd',
+        'continuous deployment': 'ci/cd'
+    }
+    
+    for phrase, canonical in multi_word_mappings.items():
+        if phrase in bullet_lower and canonical in ALL_SKILLS:
+            found_skills.append((canonical, 1.0))
+    
+    # Step 2: Extract individual skills, avoiding already matched phrases
+    matched_phrases = [phrase for phrase in multi_word_mappings.keys() if phrase in bullet_lower]
+    
+    # Create a cleaned version of the text without matched phrases
+    cleaned_text = bullet_lower
+    for phrase in matched_phrases:
+        cleaned_text = cleaned_text.replace(phrase, ' ')
+    
+    # Step 3: Find individual skills in the cleaned text
+    for skill in ALL_SKILLS:
+        # Skip if already found as part of multi-word match
+        if any(skill == multi_word_mappings[phrase] for phrase in matched_phrases):
+            continue
+            
+        # Use word boundaries for most skills, but handle special cases
+        if '/' in skill or '-' in skill or '.' in skill:
+            # Special characters - use exact match
+            if skill in cleaned_text:
+                found_skills.append((skill, 1.0))
+        else:
+            # Regular word boundary matching
+            pattern = r'\b' + re.escape(skill) + r'\b'
+            if re.search(pattern, cleaned_text):
+                found_skills.append((skill, 1.0))
+    
+    # Step 4: Handle case variations (like RabbitMQ vs rabbitmq)
+    case_variations = ['rabbitmq', 'postgresql', 'mongodb', 'elasticsearch']
+    for var_skill in case_variations:
+        if var_skill in ALL_SKILLS:
+            # Check for case-insensitive match
+            pattern = r'\b' + re.escape(var_skill) + r'\b'
+            if re.search(pattern, bullet_lower):
+                # Only add if not already found
+                if not any(found[0] == var_skill for found in found_skills):
+                    found_skills.append((var_skill, 1.0))
+    
+    # Remove duplicates while preserving confidence
+    unique_skills = {}
+    for skill, confidence in found_skills:
+        if skill not in unique_skills or confidence > unique_skills[skill]:
+            unique_skills[skill] = confidence
+    
+    result = list(unique_skills.items())
+    return result
+
 def extract_skills_from_text(text: str) -> List[str]:
-    """Extract technical skills from text (legacy interface)."""
+    """FIXED: Extract technical skills from text (legacy interface)."""
     skills_with_context = extract_skills_with_context(text)
     # Deduplicate and return unique skills
     unique_skills = {}
@@ -211,78 +292,68 @@ def extract_skills_from_text(text: str) -> List[str]:
     return list(unique_skills.keys())
 
 def extract_job_requirements_enhanced(job_description: str) -> Tuple[List[str], List[str], List[str]]:
-    """Enhanced job requirement extraction with bonus skills category."""
-    text_lower = job_description.lower()
+    lines = job_description.split('\n')
+    current_section = None
+    extracted_skills = {'required': set(), 'preferred': set(), 'bonus': set()}
+    found_any_section = False
+    
+    for line in lines:
+        line_clean = line.strip()
+        if not line_clean:
+            continue
 
-    must_have_skills = set()
-    nice_to_have_skills = set()
-    bonus_skills = set()
+        # Flexible section detection
+        if re.search(r'(required|essential)\s*(?:qualifications?|skills?)?:?', line_clean, re.IGNORECASE):
+            current_section = 'required'
+            found_any_section = True
+            # Extract skills directly from inline text after colon
+            if ':' in line_clean:
+                bullet_text = line_clean.split(':', 1)[1].strip()
+                skills_found = extract_skills_from_bullet_point(bullet_text)
+                skill_names = [skill for skill, confidence in skills_found]
+                extracted_skills[current_section].update(skill_names)
 
-    # --- Step 1: Section heading-based extraction ---
-    section_patterns = {
-        "must": r"(?:required skills?|must have|essential)\s*:([\s\S]*?)(?=\n\s*\n|preferred skills?|nice to have|bonus points?|bonus:|$)",
-        "nice": r"(?:preferred skills?|nice to have)\s*:([\s\S]*?)(?=\n\s*\n|bonus points?|bonus:|$)",
-        "bonus": r"(?:bonus points?|bonus)\s*:([\s\S]*?)(?=\n\s*\n|$)"
-    }
+        elif re.search(r'(preferred|nice to have)\s*(?:qualifications?|skills?)?:?', line_clean, re.IGNORECASE):
+            current_section = 'preferred'
+            found_any_section = True
+            if ':' in line_clean:
+                bullet_text = line_clean.split(':', 1)[1].strip()
+                skills_found = extract_skills_from_bullet_point(bullet_text)
+                skill_names = [skill for skill, confidence in skills_found]
+                extracted_skills[current_section].update(skill_names)
 
-    for category, pattern in section_patterns.items():
-        match = re.search(pattern, text_lower, re.IGNORECASE)
-        if match:
-            section_text = match.group(1)
-            # Support both bullet points and comma-separated items
-            items = re.findall(r"-\s*([^\n]+)", section_text)
-            if not items:
-                items = [i.strip() for i in section_text.split(",") if i.strip()]
-            for skill in items:
-                extracted = extract_skills_from_text(skill)
-                if category == "must":
-                    must_have_skills.update(extracted)
-                elif category == "nice":
-                    nice_to_have_skills.update(extracted)
-                elif category == "bonus":
-                    bonus_skills.update(extracted)
+        elif re.search(r'bonus\s*(?:points?|skills?)?:?', line_clean, re.IGNORECASE):
+            current_section = 'bonus'
+            found_any_section = True
+            if ':' in line_clean:
+                bullet_text = line_clean.split(':', 1)[1].strip()
+                skills_found = extract_skills_from_bullet_point(bullet_text)
+                skill_names = [skill for skill, confidence in skills_found]
+                extracted_skills[current_section].update(skill_names)
 
-    # --- Step 2: Pattern-based extraction (fallback if headings aren't found) ---
-    if not any([must_have_skills, nice_to_have_skills, bonus_skills]):
-        must_have_patterns = [
-            r'(?:required|must have|essential|mandatory|minimum|need|needs)\s*:?\s*([^.!?\n]+)',
-            r'(?:you must|candidates must|required to|shall)\s+(?:have\s+)?([^.!?\n]+)',
-            r'(?:minimum|at least)\s+(\d+\+?\s*years?\s+[^.!?\n]+)',
-            r'(?:bachelor|master|degree|diploma|certification)\s+(?:in\s+)?([^.!?\n]+)',
-            r'(?:experience|background)\s+(?:in\s+|with\s+)?([^.!?\n]+?)(?:required|mandatory|essential)',
-            r'(?:strong|solid|extensive)\s+(?:experience|knowledge|skills?)\s+(?:in\s+|with\s+)?([^.!?\n]+)',
-        ]
+        # Extract from bullet points if present
+        elif line_clean.startswith('-') and current_section:
+            bullet_text = line_clean[1:].strip()
+            skills_found = extract_skills_from_bullet_point(bullet_text)
+            skill_names = [skill for skill, confidence in skills_found]
+            extracted_skills[current_section].update(skill_names)
+    
+    # Fallback for unstructured text
+    if not found_any_section:
+        skill_names = extract_skills_from_text(job_description)
+        extracted_skills['required'].update(skill_names)
+    
+    # Remove overlaps maintaining hierarchy
+    preferred_clean = extracted_skills['preferred'] - extracted_skills['required']
+    bonus_clean = extracted_skills['bonus'] - extracted_skills['required'] - extracted_skills['preferred']
+    
+    return (
+        list(extracted_skills['required']),
+        list(preferred_clean),
+        list(bonus_clean)
+    )
 
-        nice_to_have_patterns = [
-            r'(?:preferred|nice to have|bonus|plus|advantage|desirable|would be nice|beneficial)\s*:?\s*([^.!?\n]+)',
-            r'(?:good to have|asset|helpful|valuable)\s+(?:if\s+)?([^.!?\n]+)',
-            r'(?:familiarity with|exposure to|some experience)\s+([^.!?\n]+)',
-            r'(?:additional|extra|supplementary)\s+(?:skills?|experience)\s*:?\s*([^.!?\n]+)',
-        ]
 
-        bonus_patterns = [
-            r'(?:bonus points?|highly desired|strongly preferred|ideal candidate)\s+([^.!?\n]+)',
-            r'(?:exceptional|outstanding|excellent)\s+(?:skills?|experience)\s+(?:in\s+|with\s+)?([^.!?\n]+)',
-            r'(?:thought leader|expert|guru|ninja|rockstar)\s+(?:in\s+|with\s+)?([^.!?\n]+)',
-        ]
-
-        for patterns, skill_set in [
-            (must_have_patterns, must_have_skills),
-            (nice_to_have_patterns, nice_to_have_skills),
-            (bonus_patterns, bonus_skills)
-        ]:
-            for pattern in patterns:
-                matches = re.findall(pattern, text_lower, re.IGNORECASE)
-                for match in matches:
-                    skills = extract_skills_from_text(match)
-                    skill_set.update(skills)
-
-    # --- Step 3: Remove overlaps (maintain hierarchy: must > nice > bonus) ---
-    nice_to_have_skills -= must_have_skills
-    bonus_skills -= must_have_skills
-    bonus_skills -= nice_to_have_skills
-
-    return list(must_have_skills), list(nice_to_have_skills), list(bonus_skills)
 
 def extract_job_requirements(job_description: str) -> Tuple[List[str], List[str]]:
     """Legacy interface for job requirement extraction."""

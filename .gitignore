@@ -81,3 +81,4 @@ samples/*.out
 
 # Ignore docker-compose override files
 docker-compose.override.yml
+*.checkpoint

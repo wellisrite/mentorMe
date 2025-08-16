@@ -57,7 +57,63 @@ class TestEnhancedSkillExtraction:
         python_with_years = [s for s in python_skills if "5+" in s[1]]
         if python_with_years:
             assert python_with_years[0][2] > 1.0  # Confidence boost
-    
+
+    def test_fixed_extraction(self):
+        """Test function to verify the fixes work."""
+        
+        job_desc = """SOFTWARE ENGINEER - FINTECH STARTUP
+
+    REQUIRED QUALIFICATIONS:
+    - 3+ years experience with Python, Django, and PostgreSQL
+    - Familiarity with RESTful APIs, Docker, and AWS
+    - Strong understanding of CI/CD and agile methodologies
+
+    PREFERRED QUALIFICATIONS:
+    - Experience with React, TypeScript, and Tailwind CSS
+    - Knowledge of Redis, RabbitMQ, and Kubernetes
+    - Familiarity with monitoring tools like Prometheus and Grafana
+
+    BONUS POINTS:
+    - Contributions to open-source projects
+    - Experience with GraphQL, Kafka, or Elasticsearch"""
+        
+        print("=== TESTING FIXED EXTRACTION ===")
+        must_have, nice_to_have, bonus = extract_job_requirements_enhanced(job_desc)
+        
+        print(f"\n=== FINAL TEST RESULTS ===")
+        print(f"Must have ({len(must_have)}): {must_have}")
+        print(f"Nice to have ({len(nice_to_have)}): {nice_to_have}")
+        print(f"Bonus ({len(bonus)}): {bonus}")
+        
+        # Expected results
+        expected_required = ['python', 'django', 'postgresql', 'rest', 'docker', 'aws', 'ci/cd', 'agile']
+        expected_preferred = ['react', 'typescript', 'tailwind', 'redis', 'rabbitmq', 'kubernetes', 'prometheus', 'grafana']
+        expected_bonus = ['graphql', 'kafka', 'elasticsearch']
+        
+        print(f"\n=== COMPARISON ===")
+        print(f"Expected required: {expected_required}")
+        print(f"Expected preferred: {expected_preferred}")
+        print(f"Expected bonus: {expected_bonus}")
+        
+        # Check coverage
+        required_coverage = len(set(must_have) & set(expected_required)) / len(expected_required)
+        preferred_coverage = len(set(nice_to_have) & set(expected_preferred)) / len(expected_preferred)
+        bonus_coverage = len(set(bonus) & set(expected_bonus)) / len(expected_bonus)
+        
+        print(f"\n=== COVERAGE ANALYSIS ===")
+        print(f"Required coverage: {required_coverage:.2%}")
+        print(f"Preferred coverage: {preferred_coverage:.2%}")  
+        print(f"Bonus coverage: {bonus_coverage:.2%}")
+        
+        expected_required = ['python', 'django', 'postgresql', 'rest', 'docker', 'aws', 'ci/cd', 'agile']
+        expected_preferred = ['react', 'typescript', 'tailwind', 'redis', 'rabbitmq', 'kubernetes', 'prometheus', 'grafana']
+        expected_bonus = ['graphql', 'kafka', 'elasticsearch']
+
+        # Assert at least 80% coverage
+        assert required_coverage >= 0.8, f"Required coverage too low: {required_coverage:.2%}"
+        assert preferred_coverage >= 0.8, f"Preferred coverage too low: {preferred_coverage:.2%}"
+        assert bonus_coverage >= 0.8, f"Bonus coverage too low: {bonus_coverage:.2%}"
+
     def test_skill_normalization_with_confidence(self):
         """Test enhanced skill normalization with confidence scores."""
         # Test perfect matches
