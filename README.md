@@ -4,6 +4,7 @@ A production-ready microservice that intelligently analyzes CV-to-Job Descriptio
 
 ## Quick Demo
 
+Setup your .env or run `make demo` it will automatically copy .env.example to .env
 ```bash
 # Complete setup with sample data
 make demo

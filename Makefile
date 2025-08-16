@@ -115,7 +115,6 @@ dev-setup: ## Complete development setup
 	make build
 	make up
 	@echo "Waiting for services to start..."
-	sleep 10
 	make db-migrate
 	@echo ""
 	@echo "✅ Setup complete! Services available at:"
@@ -138,6 +137,7 @@ monitor: ## Show container stats
 
 # Quick Commands for Interview Demo
 demo: ## Quick demo setup with sample data
+	cp .env.example .env
 	make dev-setup
 	sleep 5
 	@echo "Loading demo data..."
