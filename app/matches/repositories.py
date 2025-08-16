@@ -76,6 +76,11 @@ class MatchRepository:
         await cache_service.delete_pattern(f"matches:profile:{profile_id}:*")
         await cache_service.delete_pattern(f"matches:job:{job_id}:*")
         
+        # Invalidate the cached profile report after creating a match
+        report_cache_key = build_cache_key("profile_report", profile_id)
+        await cache_service.delete(report_cache_key)
+
+        
         return result_dict
 
     async def invalidate_matches_for_profile(self, profile_id: int) -> int:

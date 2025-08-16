@@ -24,18 +24,18 @@ async def get_profile_report(profile_id: int):
     """Get aggregate matching report for a profile across all jobs with smart caching."""
     
     # Build cache key for this specific profile report
-    # cache_key = build_cache_key("profile_report", profile_id)
+    cache_key = build_cache_key("profile_report", profile_id)
     
-    # # Try cache first with error handling
-    # cached_report = None
-    # try:
-    #     cached_report = await cache_service.get(cache_key)
-    #     if cached_report:
-    #         logger.debug(f"Cache hit for profile report {profile_id}")
-    #         return cached_report
-    # except Exception as cache_error:
-    #     logger.warning(f"Cache get failed for profile {profile_id}: {cache_error}")
-    #     # Continue without cache - don't fail the request
+    # Try cache first with error handling
+    cached_report = None
+    try:
+        cached_report = await cache_service.get(cache_key)
+        if cached_report:
+            logger.debug(f"Cache hit for profile report {profile_id}")
+            return cached_report
+    except Exception as cache_error:
+        logger.warning(f"Cache get failed for profile {profile_id}: {cache_error}")
+        # Continue without cache - don't fail the request
     
     # Cache miss or cache error - generate report
     try:
