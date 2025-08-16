@@ -56,15 +56,5 @@ async def get_profile_report(profile_id: int):
         logger.error(f"Error generating profile report for profile {profile_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate report")
 
-# Cache invalidation helper for when matches are updated
-async def invalidate_profile_report_cache(profile_id: int):
-    """Invalidate cached report when profile's matches change."""
-    try:
-        cache_key = build_cache_key("profile_report", profile_id)
-        await cache_service.delete(cache_key)
-        logger.debug(f"Invalidated report cache for profile {profile_id}")
-    except Exception as e:
-        logger.error(f"Error invalidating report cache: {e}")
-
 # Export all routers
 __all__ = ['main_router', 'health_router', 'profiles_router', 'jobs_router', 'matches_router']
