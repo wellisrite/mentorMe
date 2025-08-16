@@ -6,6 +6,7 @@ from app.jobs.routers import router as jobs_router
 from app.profiles.routers import router as profiles_router
 from app.matches.routers import router as matches_router
 from app.health.routers import router as health_router
+from fastapi_cache.decorator import cache
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ async def root():
 
 # Reports endpoint
 @main_router.get("/reports/{profile_id}")
+@cache(expire=900)  # 15 minutes
 async def get_profile_report(profile_id: int):
     """Get aggregate matching report for a profile across all jobs."""
     try:

@@ -6,7 +6,7 @@ import sys
 import os
 
 from app.db import database, init_db
-from app.services.redis import init_cache
+from .services.cache import init_cache, cleanup_cache
 from app.routers import (
     main_router,
     health_router,
@@ -26,16 +26,30 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Application lifespan manager"""
     logger.info("Starting Career Mirror API")
     try:
+        # Initialize database
         await database.connect()
         await init_db()
-        await init_cache()
         logger.info("Database initialized successfully")
+        
+        # Initialize cache
+        await init_cache()
+        logger.info("Cache initialized successfully")
+        
         yield
+        
+    except Exception as e:
+        logger.error(f"Startup error: {e}")
+        raise
     finally:
         logger.info("Shutting down Career Mirror API")
+        
+        # Cleanup resources
+        await cleanup_cache()
         await database.disconnect()
+        logger.info("Cleanup completed")
 
 app = FastAPI(
     title="Career Mirror API",

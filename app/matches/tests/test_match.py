@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from app.matches.repositories import MatchRepository
 
 pytestmark = pytest.mark.asyncio
 
@@ -10,8 +9,8 @@ class TestMatchAPI:
     async def test_create_match_success(self, async_client, mock_profile_data, mock_job_data, mock_match_data):
         """Test successful match creation."""
         with patch('app.matches.repositories.MatchRepository.get_existing_match', new_callable=AsyncMock) as mock_existing, \
-             patch('app.matches.repositories.MatchRepository.get_profile', new_callable=AsyncMock) as mock_profile, \
-             patch('app.matches.repositories.MatchRepository.get_job', new_callable=AsyncMock) as mock_job, \
+             patch('app.profiles.repositories.ProfileRepository.get_profile_by_id', new_callable=AsyncMock) as mock_profile, \
+             patch('app.jobs.repositories.JobRepository.get_job_by_id', new_callable=AsyncMock) as mock_job, \
              patch('app.matches.repositories.MatchRepository.create_match', new_callable=AsyncMock) as mock_create:
             
             # Setup mock returns
@@ -63,7 +62,7 @@ class TestMatchAPI:
     async def test_create_match_profile_not_found(self, async_client):
         """Test match creation when profile doesn't exist."""
         with patch('app.matches.repositories.MatchRepository.get_existing_match', new_callable=AsyncMock) as mock_existing, \
-             patch('app.matches.repositories.MatchRepository.get_profile', new_callable=AsyncMock) as mock_profile:
+             patch('app.profiles.repositories.ProfileRepository.get_profile_by_id', new_callable=AsyncMock) as mock_profile:
             
             mock_existing.return_value = None
             mock_profile.return_value = None
@@ -81,8 +80,8 @@ class TestMatchAPI:
     async def test_create_match_job_not_found(self, async_client, mock_profile_data):
         """Test match creation when job doesn't exist."""
         with patch('app.matches.repositories.MatchRepository.get_existing_match', new_callable=AsyncMock) as mock_existing, \
-             patch('app.matches.repositories.MatchRepository.get_profile', new_callable=AsyncMock) as mock_profile, \
-             patch('app.matches.repositories.MatchRepository.get_job', new_callable=AsyncMock) as mock_job:
+             patch('app.profiles.repositories.ProfileRepository.get_profile_by_id', new_callable=AsyncMock) as mock_profile, \
+             patch('app.jobs.repositories.JobRepository.get_job_by_id', new_callable=AsyncMock) as mock_job:
             
             mock_existing.return_value = None
             mock_profile.return_value = mock_profile_data

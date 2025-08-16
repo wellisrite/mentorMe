@@ -1,4 +1,4 @@
-from app.services.redis import FastAPICache, cache_key_builder, init_cache
+from .cache import cache_service, cached, build_cache_key, CacheConfig, init_cache, cleanup_cache
 from app.services.scoring import (
     extract_skills_from_text,
     extract_job_requirements,
@@ -9,11 +9,12 @@ from app.services.scoring import (
 from app.services.linkedinscraper import extract_linkedin_profile
 
 __all__ = [
-    # Redis cache
-    'FastAPICache',
-    'cache_key_builder',
-    'init_cache',
-    
+    "cache_service", 
+    "cached", 
+    "build_cache_key", 
+    "CacheConfig", 
+    "init_cache", 
+    "cleanup_cache",
     # Scoring and matching
     'extract_skills_from_text',
     'extract_job_requirements',
