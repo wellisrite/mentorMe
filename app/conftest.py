@@ -40,6 +40,32 @@ class DummyCoder:
     def decode(self, value):
         return json.loads(value)
 
+
+@pytest.fixture
+def patch_cache_service():
+    """Return a fresh async mock for cache service."""
+    mock_cache = AsyncMock()
+    # Provide simple async get/set/delete behavior
+    store = {}
+
+    async def get(key):
+        return store.get(key)
+
+    async def set(key, value, ttl=None):
+        store[key] = value
+        return True
+
+    async def delete(key):
+        store.pop(key, None)
+        return True
+
+    mock_cache.get.side_effect = get
+    mock_cache.set.side_effect = set
+    mock_cache.delete.side_effect = delete
+
+    return mock_cache
+
+
 @pytest.fixture(autouse=True)
 def patch_fastapi_cache(monkeypatch):
     monkeypatch.setattr("fastapi_cache.decorator.cache", lambda *a, **kw: lambda f: f)
